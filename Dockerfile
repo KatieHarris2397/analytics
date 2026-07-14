@@ -4,7 +4,7 @@
 ARG ALPINE_VERSION=3.22.2
 
 #### Builder
-FROM hexpm/elixir:1.19.4-erlang-27.3.4.6-alpine-${ALPINE_VERSION} AS buildcontainer
+FROM mirror.gcr.io/hexpm/elixir:1.19.4-erlang-27.3.4.6-alpine-${ALPINE_VERSION} AS buildcontainer
 
 ARG MIX_ENV=ce
 
@@ -55,7 +55,7 @@ COPY rel rel
 RUN mix release plausible
 
 # Main Docker Image
-FROM alpine:${ALPINE_VERSION}
+FROM mirror.gcr.io/library/alpine:${ALPINE_VERSION}
 LABEL maintainer="plausible.io <hello@plausible.io>"
 
 ARG BUILD_METADATA={}

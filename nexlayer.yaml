@@ -1,0 +1,32 @@
+application:
+  name: analytics
+  pods:
+    - name: app
+      image: "registry.nexlayer.io/user_01kna6j8vrcfj9q0wjtq5qsq3n/analytics:19f62827419"
+      path: /
+      servicePorts:
+        - 8000
+      vars:
+        NODE_ENV: "production"
+        PORT: "8000"
+        HOSTNAME: "0.0.0.0"
+        DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres.pod:5432/app"
+        REDIS_URL: "redis://redis.pod:6379"
+        SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
+    - name: postgres
+      image: mirror.gcr.io/library/postgres:16-alpine
+      servicePorts:
+        - 5432
+      vars:
+        POSTGRES_USER: "app"
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_DB: "app"
+      volumes:
+        - name: analytics-postgres-data
+          size: 10Gi
+          mountPath: /var/lib/postgresql/data
+    - name: redis
+      image: mirror.gcr.io/library/redis:7-alpine
+      servicePorts:
+        - 6379
+      vars: {}
