@@ -1,10 +1,7 @@
-# we can not use the pre-built tar because the distribution is
-# platform specific, it makes sense to build it in the docker
-
 ARG ALPINE_VERSION=3.22.2
 
 #### Builder
-FROM hexpm/elixir:1.19.4-erlang-27.3.4.6-alpine-${ALPINE_VERSION} AS buildcontainer
+FROM mirror.gcr.io/hexpm/elixir:1.19.4-erlang-27.3.4.6-alpine-${ALPINE_VERSION} AS buildcontainer
 
 ARG MIX_ENV=ce
 
@@ -55,7 +52,7 @@ COPY rel rel
 RUN mix release plausible
 
 # Main Docker Image
-FROM alpine:${ALPINE_VERSION}
+FROM mirror.gcr.io/library/alpine:${ALPINE_VERSION}
 LABEL maintainer="plausible.io <hello@plausible.io>"
 
 ARG BUILD_METADATA={}
@@ -63,6 +60,13 @@ ENV BUILD_METADATA=$BUILD_METADATA
 ENV LANG=C.UTF-8
 ARG MIX_ENV=ce
 ENV MIX_ENV=$MIX_ENV
+
+# Required runtime configuration - BASE_URL is mandatory for the app to boot
+ENV BASE_URL=http://localhost:8000
+ENV SECRET_KEY_BASE=placeholder_secret_key_for_build_only
+ENV DATABASE_URL=postgresql://postgres:postgres@postgres.pod:5432/plausible
+ENV CLICKHOUSE_DATABASE_URL=http://clickhouse.pod:8123/plausible
+ENV HTTP_PORT=8000
 
 RUN adduser -S -H -u 999 -G nogroup plausible
 
@@ -73,16 +77,7 @@ RUN apk add --no-cache openssl ncurses libstdc++ libgcc ca-certificates \
 COPY --from=buildcontainer --chmod=555 /app/_build/${MIX_ENV}/rel/plausible /app
 COPY --chmod=755 ./rel/docker-entrypoint.sh /entrypoint.sh
 
-# we need to allow "others" access to app folder, because
-# docker container can be started with arbitrary uid
-RUN mkdir -p /var/lib/plausible && chmod ugo+rw -R /var/lib/plausible
-
-USER 999
-WORKDIR /app
-ENV LISTEN_IP=0.0.0.0
-ENTRYPOINT ["/entrypoint.sh"]
 EXPOSE 8000
-ENV DEFAULT_DATA_DIR=/var/lib/plausible
-VOLUME /var/lib/plausible
-CMD ["run"]
 
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/app/bin/plausible", "start"]
