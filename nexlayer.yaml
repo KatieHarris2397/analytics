@@ -1,0 +1,38 @@
+application:
+  name: analytics
+  pods:
+    - name: app
+      image: "registry.nexlayer.io/user_01krc1n44dd49btzyv6vht92v2/analytics:1a02031b8e3"
+      path: /
+      servicePorts:
+        - 8000
+      vars:
+        BASE_URL: "https://<% URL %>"
+        SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
+        DATABASE_URL: "postgresql://app:${POSTGRES_PASSWORD}@postgres.pod:5432/app"
+        CLICKHOUSE_DATABASE_URL: "http://clickhouse.pod:8123/plausible"
+        LISTEN_IP: "0.0.0.0"
+        HTTP_PORT: "8000"
+        MIX_ENV: "ce"
+    - name: postgres
+      image: mirror.gcr.io/library/postgres:16-alpine
+      servicePorts:
+        - 5432
+      vars:
+        POSTGRES_USER: "app"
+        POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+        POSTGRES_DB: "app"
+      volumes:
+        - name: analytics-postgres-data
+          size: 10Gi
+          mountPath: /var/lib/postgresql
+    - name: clickhouse
+      image: mirror.gcr.io/library/clickhouse/clickhouse-server:24.8-alpine
+      servicePorts:
+        - 8123
+      vars:
+        CLICKHOUSE_DB: plausible
+      volumes:
+        - name: analytics-clickhouse-data
+          size: 10Gi
+          mountPath: /var/lib/clickhouse

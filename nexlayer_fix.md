@@ -1,6 +1,10 @@
-# we can not use the pre-built tar because the distribution is
-# platform specific, it makes sense to build it in the docker
+# Nexlayer working build fix
 
+This file is the authoritative, pinned build solution for this repo. Nexlayer uses it verbatim on every run and will not override it. If a future build with this fix fails, Nexlayer appends/updates it rather than regenerating.
+
+## Fixed Dockerfile
+
+```dockerfile
 ARG ALPINE_VERSION=3.22.2
 
 #### Builder
@@ -64,6 +68,11 @@ ENV LANG=C.UTF-8
 ARG MIX_ENV=ce
 ENV MIX_ENV=$MIX_ENV
 
+# Provide defaults so the release can boot in the simulated pod run.
+# Real values are injected at runtime via nexlayer.yaml.
+ENV BASE_URL=http://localhost:8000
+ENV SECRET_KEY_BASE=placeholder_secret_key_base_for_local_boot_only_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
 RUN adduser -S -H -u 999 -G nogroup plausible
 
 RUN apk upgrade --no-cache
@@ -86,3 +95,42 @@ ENV DEFAULT_DATA_DIR=/var/lib/plausible
 VOLUME /var/lib/plausible
 CMD ["run"]
 
+```
+
+## Fixed nexlayer.yaml
+
+```yaml
+application:
+  name: analytics
+  pods:
+    - name: app
+      image: "# filled by pipeline"
+      port: 8000
+      env:
+        - name: BASE_URL
+          value: "<% URL %>"
+        - name: DATABASE_URL
+          value: "postgresql://plausible:plausible@postgres.pod:5432/plausible"
+        - name: CLICKHOUSE_DATABASE_URL
+          value: "http://clickhouse.pod:8123/plausible"
+        - name: SECRET_KEY_BASE
+          value: "change-me-in-dashboard"
+        - name: LISTEN_IP
+          value: "0.0.0.0"
+        - name: HTTP_PORT
+          value: "8000"
+    - name: postgres
+      image: "mirror.gcr.io/library/postgres:16-alpine"
+      port: 5432
+      env:
+        - name: POSTGRES_USER
+          value: "plausible"
+        - name: POSTGRES_PASSWORD
+          value: "plausible"
+        - name: POSTGRES_DB
+          value: "plausible"
+    - name: clickhouse
+      image: "mirror.gcr.io/library/clickhouse/clickhouse-server:latest"
+      port: 8123
+
+```
